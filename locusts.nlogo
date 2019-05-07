@@ -1,16 +1,12 @@
 breed [locusts locust]
+locusts-own [ energy age mates nearest-neighbor other-locust]
+patches-own [ grass-amount ]
 
-locusts-own [ energy age mates nearest-neighbor]  ;; agents own energy
-
-patches-own [ grass-amount ]  ;; patches have grass
-
-;; this procedures sets up the model
 to setup
   clear-all
   ask patches [
-    ;; give grass to the patches, color it shades of green
     set grass-amount random-float 10.0
-    recolor-grass ;; change the world green
+    recolor-grass
   ]
   create-locusts number-of-locusts [
     setxy random-xcor random-ycor
@@ -18,48 +14,46 @@ to setup
     set shape "bug"
     set energy 3
     set age 0
+    set size 1.5
+    set other-locust no-turtles
   ]
   reset-ticks
 end
 
-;; make the model run
 to go
   if not any? locusts [
     stop
   ]
   ask locusts [
     ifelse color = white
-      [ wiggle        ;; first turn a little bit
-        move   ]      ;; then step forward
-      [ swamp ]
+      [ wiggle
+        move   ]
+      [ swamp
+        move   ]
     change-phase
-    check-if-dead ;; check to see if agent should die
-    eat           ;; sheep eat grass
-    reproduce     ;; the sheep reproduce
+    check-if-dead
+    eat
+    reproduce
     mature
   ]
-  regrow-grass    ;; the grass grows back
+  regrow-grass
   tick
-  my-update-plots ;; plot the population counts
 end
 
-;; check to see if this sheep has enough energy to reproduce
 to reproduce
   if energy > 5 [
-    set energy energy - 2  ;; reproduction transfers energy
+    set energy energy - 2
     hatch 2 [
       set energy 3
       set age 0
-    ] ;; to the new agent
+    ]
   ]
 end
 
-;; recolor the grass to indicate how much has been eaten
 to recolor-grass
   set pcolor scale-color green grass-amount 0 20
 end
 
-;; regrow the grass
 to regrow-grass
   ask patches [
     set grass-amount grass-amount + grass-regrowth-rate
@@ -70,13 +64,9 @@ to regrow-grass
   ]
 end
 
-;; sheep procedure, sheep eat grass
 to eat
-  ;; check to make sure there is grass here
   if ( grass-amount >= energy-gain-from-grass ) [
-    ;; increment the sheep's energy
     set energy energy + energy-gain-from-grass
-    ;; decrement the grass
     set grass-amount grass-amount - energy-gain-from-grass
     recolor-grass
   ]
@@ -86,123 +76,97 @@ to mature
   set age age + 1
 end
 
-;; asks those sheep with no energy to die
 to check-if-dead
-  if energy < 0 or age > 3  [
+  if energy < 0.01 or age > 3  [
     die
   ]
 end
 
-;; update the plots in the interface tab
-to my-update-plots
-  plot count locusts
-end
-
-;; sheep procedure, the sheep changes its heading
 to wiggle
   rt random 90
   lt random 90
 end
 
-;; sheep procedure, the sheep moves which costs it energy
 to move
   forward 1
-  set energy energy - movement-cost ;; reduce the energy by the cost of movement
+  set energy energy - movement-cost
 end
 
 to change-phase
-  if count locusts-here > 5 [set color red]
-  if count locusts-here < 5 [
-    ifelse color = 17 or color = white
-      [ set color white ]
-      [ set color color + 1 ]
-  ]
+  if count locusts-here > 2 [set color red]
 end
 
-to swamp  ;; turtle procedure
-  find-mates
-  if any? mates
-    [ ifelse distance nearest-neighbor < min-separation
+to swamp
+  find-other-locust
+  if any? other-locust
+    [ find-nearest-neighbor
+      ifelse distance nearest-neighbor < min-separation
         [ separate ]
         [ align
           cohere ] ]
 end
 
-to find-mates  ;; turtle procedure
-  set mates other turtles in-radius sense
+to find-other-locust
+  set other-locust other turtles in-radius sense
 end
 
-to find-nearest-neighbor ;; turtle procedure
-  set nearest-neighbor min-one-of mates [distance myself]
+to find-nearest-neighbor
+  set nearest-neighbor min-one-of other-locust [distance myself]
 end
 
-;;; SEPARATE
 
-to separate  ;; turtle procedure
-  turn-away ([heading] of nearest-neighbor)
+to separate
+  turn-away ([heading] of nearest-neighbor) 1.5
 end
 
-;;; ALIGN
-
-to align  ;; turtle procedure
-  turn-towards average-flockmate-heading
+to align
+  turn-towards average-other-locust-heading 10
 end
 
-to-report average-flockmate-heading  ;; turtle procedure
-  ;; We can't just average the heading variables here.
-  ;; For example, the average of 1 and 359 should be 0,
-  ;; not 180.  So we have to use trigonometry.
-  let x-component sum [dx] of mates
-  let y-component sum [dy] of mates
+to-report average-other-locust-heading
+  let x-component sum [dx] of other-locust
+  let y-component sum [dy] of other-locust
   ifelse x-component = 0 and y-component = 0
     [ report heading ]
     [ report atan x-component y-component ]
 end
 
-;;; COHERE
-
-to cohere  ;; turtle procedure
-  turn-towards average-heading-towards-mates
+to cohere
+  turn-towards average-heading-towards-other-locust 5
 end
 
-to-report average-heading-towards-mates  ;; turtle procedure
-  ;; "towards myself" gives us the heading from the other turtle
-  ;; to me, but we want the heading from me to the other turtle,
-  ;; so we add 180
-  let x-component mean [sin (towards myself + 180)] of mates
-  let y-component mean [cos (towards myself + 180)] of mates
+to-report average-heading-towards-other-locust
+  let x-component mean [sin (towards myself + 180)] of other-locust
+  let y-component mean [cos (towards myself + 180)] of other-locust
   ifelse x-component = 0 and y-component = 0
     [ report heading ]
     [ report atan x-component y-component ]
 end
 
-;;; HELPER PROCEDURES
-
-to turn-towards [new-heading]  ;; turtle procedure
-  turn-at-most (subtract-headings new-heading heading)
+to turn-towards [new-heading max-turn]
+  turn-at-most (subtract-headings new-heading heading) max-turn
 end
 
-to turn-away [new-heading]  ;; turtle procedure
-  turn-at-most (subtract-headings heading new-heading)
+to turn-away [new-heading max-turn]
+  turn-at-most (subtract-headings heading new-heading) max-turn
 end
 
-;; turn right by "turn" degrees (or left if "turn" is negative),
-;; but never turn more than "max-turn" degrees
-to turn-at-most [turn]  ;; turtle procedure
-  rt turn
+to turn-at-most [turn max-turn]
+  ifelse abs turn > max-turn
+    [ ifelse turn > 0
+        [ rt max-turn ]
+        [ lt max-turn ] ]
+    [ rt turn ]
 end
-
-; Copyright 2007 Uri Wilensky.
-; See Info tab for full copyright and license.
 @#$#@#$#@
 GRAPHICS-WINDOW
 303
 10
-731
-439
+808
+516
 -1
 -1
-12.0
+7.0
 1
 10
 1
@@ -212,10 +176,10 @@ GRAPHICS-WINDOW
 1
 1
 1
--17
-17
--17
-17
+-35
+35
+-35
+35
 1
 1
 1
@@ -256,24 +220,6 @@ NIL
 NIL
 0
 
-PLOT
-35
-250
-270
-400
-Population over Time
-Time
-Population
-0.0
-10.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" ""
-
 SLIDER
 53
 11
@@ -283,7 +229,7 @@ number-of-locusts
 number-of-locusts
 0
 1000
-698.0
+204.0
 1
 1
 NIL
@@ -298,7 +244,7 @@ movement-cost
 movement-cost
 0
 2.0
-1.0
+0.5
 0.1
 1
 NIL
@@ -313,7 +259,7 @@ grass-regrowth-rate
 grass-regrowth-rate
 0
 2.0
-1.0
+0.5
 0.1
 1
 NIL
@@ -328,7 +274,7 @@ energy-gain-from-grass
 energy-gain-from-grass
 0
 2.0
-2.0
+1.5
 0.1
 1
 NIL
@@ -350,15 +296,15 @@ patches
 HORIZONTAL
 
 SLIDER
-35
-425
-207
-458
+45
+250
+217
+283
 min-separation
 min-separation
 0
 100
-50.0
+13.0
 1
 1
 NIL

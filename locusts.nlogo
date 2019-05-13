@@ -1,21 +1,31 @@
 breed [locusts locust]
+breed [goats goat]
 locusts-own [ energy age mates nearest-neighbor other-locust]
-patches-own [ grass-amount ]
+patches-own [ grass-amount n-content ]
+globals [ initial-energy ]
 
 to setup
   clear-all
+  set initial-energy 2
   ask patches [
     set grass-amount random-float 10.0
+    set n-content 1
     recolor-grass
   ]
   create-locusts number-of-locusts [
     setxy random-xcor random-ycor
     set color white
     set shape "bug"
-    set energy 3
+    set energy initial-energy
     set age 0
     set size 1.5
     set other-locust no-turtles
+  ]
+  create-goats number-of-goats [
+    setxy random-xcor random-ycor
+    set color yellow
+    set shape "sheep"
+    set size 5
   ]
   reset-ticks
 end
@@ -24,12 +34,18 @@ to go
   if not any? locusts [
     stop
   ]
+  ask goats [
+    move
+    goat-eat
+  ]
   ask locusts [
-    ifelse color = white
+    ifelse color = 9.9
       [ wiggle
-        move   ]
+        move
+        reduce-energy]
       [ swamp
-        move   ]
+        move
+        reduce-energy]
     change-phase
     check-if-dead
     eat
@@ -40,12 +56,18 @@ to go
   tick
 end
 
+to goat-eat
+  set n-content n-content * 0.95
+  if n-content < 0.5 [ set n-content 0.5 ]
+end
+
 to reproduce
-  if energy > 5 [
+  if energy > 3 * initial-energy and age > 5 [
     set energy energy - 2
     hatch 2 [
-      set energy 3
+      set energy initial-energy
       set age 0
+      if color != white [set color color - 2.5]
     ]
   ]
 end
@@ -66,7 +88,7 @@ end
 
 to eat
   if ( grass-amount >= energy-gain-from-grass ) [
-    set energy energy + energy-gain-from-grass
+    set energy energy + energy-gain-from-grass * (2 - n-content)
     set grass-amount grass-amount - energy-gain-from-grass
     recolor-grass
   ]
@@ -77,9 +99,14 @@ to mature
 end
 
 to check-if-dead
-  if energy < 0.01 or age > 3  [
-    die
-  ]
+  if energy < 0 or age > 24 [ die ]
+  ifelse color = white
+      [ if random 100 - gregarious-advantage < death-rate
+         [ die ]
+      ]
+      [ if random 100 < death-rate
+          [ die ]
+      ]
 end
 
 to wiggle
@@ -89,25 +116,29 @@ end
 
 to move
   forward 1
+end
+
+to reduce-energy
   set energy energy - movement-cost
 end
 
 to change-phase
-  if count locusts-here > 2 [set color red]
+  if count locusts-here > phase-threshold
+  [set color 14.9]
 end
 
 to swamp
   find-other-locust
   if any? other-locust
     [ find-nearest-neighbor
-      ifelse distance nearest-neighbor < min-separation
+      ifelse distance nearest-neighbor < 10
         [ separate ]
         [ align
           cohere ] ]
 end
 
 to find-other-locust
-  set other-locust other turtles in-radius sense
+  set other-locust other turtles in-radius 3
 end
 
 to find-nearest-neighbor
@@ -187,10 +218,10 @@ ticks
 30.0
 
 BUTTON
-35
-80
-101
-113
+30
+55
+96
+88
 setup
 setup
 NIL
@@ -204,10 +235,10 @@ NIL
 1
 
 BUTTON
-180
-80
-243
-113
+175
+55
+238
+88
 go
 go
 T
@@ -229,17 +260,17 @@ number-of-locusts
 number-of-locusts
 0
 1000
-204.0
+414.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-35
-120
-245
-153
+30
+135
+240
+168
 movement-cost
 movement-cost
 0
@@ -251,10 +282,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-35
-160
-245
-193
+30
+95
+240
+128
 grass-regrowth-rate
 grass-regrowth-rate
 0
@@ -266,49 +297,152 @@ NIL
 HORIZONTAL
 
 SLIDER
-35
-200
-245
-233
+30
+170
+240
+203
 energy-gain-from-grass
 energy-gain-from-grass
 0
 2.0
-1.5
-0.1
+1.05
+0.01
 1
 NIL
 HORIZONTAL
 
+PLOT
+810
+35
+1010
+185
+Grass
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot sum [grass-amount] of patches"
+
 SLIDER
-55
 45
-227
-78
-sense
-sense
+245
+217
+278
+phase-threshold
+phase-threshold
+2
+10
+6.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+45
+315
+217
+348
+number-of-goats
+number-of-goats
 0
+50
+0.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+45
+280
+217
+313
+grazing-cost
+grazing-cost
+1
 10
 3.0
+0.1
 1
-1
-patches
+NIL
 HORIZONTAL
+
+PLOT
+805
+185
+1200
+500
+Locusts number
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -5298144 true "" "plot count locusts"
 
 SLIDER
 45
-250
+205
 217
-283
-min-separation
-min-separation
+238
+death-rate
+death-rate
 0
 100
-13.0
+10.0
 1
 1
 NIL
 HORIZONTAL
+
+SLIDER
+35
+350
+227
+383
+gregarious-advantage
+gregarious-advantage
+0
+50
+5.0
+1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+1080
+45
+1137
+90
+grass
+sum [grass-amount] of patches
+17
+1
+11
+
+MONITOR
+1080
+100
+1137
+145
+locusts
+count locusts
+17
+1
+11
 
 @#$#@#$#@
 ## ACKNOWLEDGMENT

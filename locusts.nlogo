@@ -12,7 +12,7 @@ to setup
     set n-content 1
     recolor-grass
   ]
-  create-locusts number-of-locusts [
+  create-locusts 500 [
     setxy random-xcor random-ycor
     set color white
     set shape "bug"
@@ -32,6 +32,9 @@ end
 
 to go
   if not any? locusts [
+    stop
+  ]
+  if ticks > 3999 [
     stop
   ]
   ask goats [
@@ -67,7 +70,7 @@ to reproduce
     hatch 2 [
       set energy initial-energy
       set age 0
-      if color != white [set color color - 2.5]
+      if color != white [set color color - 1]
     ]
   ]
 end
@@ -78,7 +81,7 @@ end
 
 to regrow-grass
   ask patches [
-    set grass-amount grass-amount + grass-regrowth-rate
+    set grass-amount grass-amount + 0.5
     if grass-amount > 10.0 [
       set grass-amount 10.0
     ]
@@ -87,9 +90,10 @@ to regrow-grass
 end
 
 to eat
-  if ( grass-amount >= energy-gain-from-grass ) [
-    set energy energy + energy-gain-from-grass * (2 - n-content)
-    set grass-amount grass-amount - energy-gain-from-grass
+  if ( grass-amount >= 1.01 ) [
+    set energy energy + 1.01
+    if color != white [set energy energy + 1.01 * (1 - n-content)]
+    set grass-amount grass-amount - 1.01
     recolor-grass
   ]
 end
@@ -101,10 +105,10 @@ end
 to check-if-dead
   if energy < 0 or age > 24 [ die ]
   ifelse color = white
-      [ if random 100 - gregarious-advantage < death-rate
+      [ if random 100 - 3 < 10
          [ die ]
       ]
-      [ if random 100 < death-rate
+      [ if random 100 < 10
           [ die ]
       ]
 end
@@ -119,11 +123,11 @@ to move
 end
 
 to reduce-energy
-  set energy energy - movement-cost
+  set energy energy - 0.5
 end
 
 to change-phase
-  if count locusts-here > phase-threshold
+  if count locusts-here > 6
   [set color 14.9]
 end
 
@@ -218,10 +222,10 @@ ticks
 30.0
 
 BUTTON
-30
-55
-96
-88
+45
+65
+111
+98
 setup
 setup
 NIL
@@ -235,10 +239,10 @@ NIL
 1
 
 BUTTON
-175
-55
-238
-88
+155
+65
+218
+98
 go
 go
 T
@@ -251,71 +255,11 @@ NIL
 NIL
 0
 
-SLIDER
-53
-11
-230
-44
-number-of-locusts
-number-of-locusts
-0
-1000
-414.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-30
-135
-240
-168
-movement-cost
-movement-cost
-0
-2.0
-0.5
-0.1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-30
-95
-240
-128
-grass-regrowth-rate
-grass-regrowth-rate
-0
-2.0
-0.5
-0.1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-30
-170
-240
-203
-energy-gain-from-grass
-energy-gain-from-grass
-0
-2.0
-1.05
-0.01
-1
-NIL
-HORIZONTAL
-
 PLOT
 810
-35
+60
 1010
-185
+210
 Grass
 NIL
 NIL
@@ -331,24 +275,9 @@ PENS
 
 SLIDER
 45
-245
+100
 217
-278
-phase-threshold
-phase-threshold
-2
-10
-6.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-45
-315
-217
-348
+133
 number-of-goats
 number-of-goats
 0
@@ -359,26 +288,11 @@ number-of-goats
 NIL
 HORIZONTAL
 
-SLIDER
-45
-280
-217
-313
-grazing-cost
-grazing-cost
-1
-10
-3.0
-0.1
-1
-NIL
-HORIZONTAL
-
 PLOT
 805
-185
+210
 1200
-500
+525
 Locusts number
 NIL
 NIL
@@ -387,46 +301,17 @@ NIL
 0.0
 10.0
 true
-false
+true
 "" ""
 PENS
-"default" 1.0 0 -5298144 true "" "plot count locusts"
-
-SLIDER
-45
-205
-217
-238
-death-rate
-death-rate
-0
-100
-10.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-35
-350
-227
-383
-gregarious-advantage
-gregarious-advantage
-0
-50
-5.0
-1
-1
-NIL
-HORIZONTAL
+"Total Locusts" 1.0 0 -14070903 true "" "plot count locusts"
+"Gregarious Locusts" 1.0 0 -5298144 true "" "plot count locusts with [color != white]"
 
 MONITOR
-1080
-45
-1137
-90
+810
+10
+867
+55
 grass
 sum [grass-amount] of patches
 17
@@ -434,15 +319,33 @@ sum [grass-amount] of patches
 11
 
 MONITOR
-1080
-100
-1137
-145
+870
+10
+927
+55
 locusts
 count locusts
 17
 1
 11
+
+PLOT
+1010
+60
+1210
+210
+Gregarious Ratio
+NIL
+NIL
+0.0
+10.0
+0.0
+1.0
+true
+false
+"" ""
+PENS
+"Gregarious Ratio" 1.0 0 -16777216 true "" "plot (count locusts with [color != white]) / (count locusts)"
 
 @#$#@#$#@
 ## ACKNOWLEDGMENT
